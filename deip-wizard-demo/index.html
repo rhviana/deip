@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEIP · Metadata Wizard</title>
+  <style>
+    :root {
+      --bg:            #050816;
+      --bg-elevated:   #0b1020;
+      --bg-deep:       #020617;
+      --border-subtle: #1f2937;
+      --accent:        #38bdf8;
+      --accent-strong: #0ea5e9;
+      --text-main:     #e5e7eb;
+      --text-muted:    #9ca3af;
+      --success:       #22c55e;
+      --font-main:     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --radius:        10px;
+      --shadow-soft:   0 18px 45px rgba(15,23,42,.55);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-main);
+      background: radial-gradient(circle at top left, #1e293b 0, #020617 40%, #020617 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 32px 16px 60px;
+    }
+
+    .shell { width: 100%; max-width: 920px; }
+
+    /* HEADER */
+    header { margin-bottom: 24px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 4px 10px; border-radius: 999px;
+      background: rgba(15,23,42,.9); border: 1px solid rgba(148,163,184,.3);
+      color: var(--text-muted); font-size: 11px;
+      text-transform: uppercase; letter-spacing: .12em; margin-bottom: 10px;
+    }
+    .badge-dot { width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px rgba(34,197,94,.25); }
+    h1 { margin: 8px 0 4px; font-size: 26px; letter-spacing: .03em; }
+    .subtitle { font-size: 13px; color: var(--text-muted); }
+
+    /* STEPPER */
+    .stepper { display:flex;align-items:flex-start;margin-bottom:20px;overflow-x:auto;padding-bottom:2px; }
+    .step-item { display:flex;align-items:center;flex:1;min-width:0; }
+    .step-bubble { display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0; }
+    .step-num {
+      width:28px;height:28px;border-radius:50%;border:2px solid var(--border-subtle);
+      background:var(--bg-deep);display:flex;align-items:center;justify-content:center;
+      font-size:11px;font-weight:600;color:var(--text-muted);transition:all .2s;
+    }
+    .step-label { font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);white-space:nowrap; }
+    .step-line { flex:1;height:2px;background:var(--border-subtle);margin:0 4px;margin-bottom:18px;transition:background .3s; }
+    .step-item.active .step-num { border-color:var(--accent);background:rgba(56,189,248,.12);color:var(--accent);box-shadow:0 0 0 3px rgba(56,189,248,.12); }
+    .step-item.active .step-label { color:var(--accent); }
+    .step-item.done .step-num { border-color:var(--success);background:rgba(34,197,94,.1);color:var(--success);font-size:0; }
+    .step-item.done .step-num::after { content:"✓";font-size:12px; }
+    .step-item.done .step-label { color:var(--success); }
+    .line-done { background:rgba(34,197,94,.35) !important; }
+
+    /* PROGRESS */
+    .prog { height:2px;background:var(--border-subtle);border-radius:999px;margin-bottom:18px;overflow:hidden; }
+    .prog-fill { height:100%;background:linear-gradient(90deg,var(--accent-strong),var(--accent));border-radius:999px;transition:width .4s ease; }
+
+    /* PANEL */
+    .panel {
+      background:var(--bg-elevated);border-radius:var(--radius);
+      border:1px solid var(--border-subtle);box-shadow:var(--shadow-soft);
+      padding:20px 22px 22px;position:relative;overflow:hidden;margin-bottom:16px;
+    }
+    .panel::before {
+      content:"";position:absolute;inset:0;pointer-events:none;opacity:.7;
+      background:radial-gradient(circle at top right,rgba(56,189,248,.09),transparent 55%);
+    }
+    .panel h2 { margin:0 0 3px;font-size:15px;display:flex;align-items:center;gap:8px; }
+    .panel h2 .tag { font-size:10px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em; }
+    .panel .desc { margin:4px 0 16px;font-size:12px;color:var(--text-muted);line-height:1.55; }
+    hr.sep { border:none;border-top:1px solid var(--border-subtle);margin:14px 0; }
+
+    /* GROUP */
+    .grp-lbl {
+      font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+      color:var(--text-muted);margin-bottom:7px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .grp-lbl::after { content:"";flex:1;height:1px;background:var(--border-subtle); }
+
+    /* CHIPS */
+    .chips { display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px; }
+    .chip {
+      padding:5px 13px;border-radius:999px;border:1px solid var(--border-subtle);
+      background:var(--bg-deep);color:var(--text-muted);font-size:12px;cursor:pointer;
+      transition:all .12s;white-space:nowrap;display:flex;align-items:center;gap:5px;
+    }
+    .chip:hover { border-color:var(--accent);color:var(--accent);background:rgba(56,189,248,.07); }
+    .chip.sel { border-color:var(--accent);color:var(--accent);background:rgba(56,189,248,.12);font-weight:600; }
+    .chip.multi.sel { border-color:#818cf8;color:#a5b4fc;background:rgba(129,140,248,.1); }
+
+    /* CARDS */
+    .cgrid { display:grid;grid-template-columns:repeat(auto-fill,minmax(166px,1fr));gap:8px; }
+    .cc {
+      padding:12px 14px;border-radius:var(--radius);border:1px solid var(--border-subtle);
+      background:var(--bg-deep);cursor:pointer;transition:all .12s;position:relative;overflow:hidden;
+    }
+    .cc:hover { border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.04);transform:translateY(-1px); }
+    .cc.sel { border-color:var(--accent);background:rgba(56,189,248,.09);box-shadow:0 0 0 1px rgba(56,189,248,.25); }
+    .cc.hint { border-color:rgba(56,189,248,.3); }
+    .cc.hint::after { content:"Suggested";position:absolute;top:5px;right:7px;font-size:8.5px;color:var(--accent);opacity:.75; }
+    .cc-icon { font-size:18px;margin-bottom:6px; }
+    .cc-name { font-size:12.5px;font-weight:600;margin-bottom:2px; }
+    .cc.sel .cc-name { color:var(--accent); }
+    .cc-desc { font-size:10.5px;color:var(--text-muted);line-height:1.4; }
+
+    /* INPUTS */
+    input, select {
+      border-radius:6px;border:1px solid var(--border-subtle);background:var(--bg-deep);
+      padding:7px 9px;font-size:13px;color:var(--text-main);font-family:var(--font-main);
+      outline:none;transition:border-color .15s,box-shadow .15s;
+    }
+    input::placeholder { color:#4b5563; }
+    input:focus, select:focus { border-color:var(--accent);box-shadow:0 0 0 2px rgba(56,189,248,.2); }
+    select option { background:var(--bg-elevated); }
+    .irow { display:flex;gap:8px;align-items:center;margin-bottom:8px; }
+    .irow input { flex:1; }
+    .hint-s { font-size:11px;color:var(--text-muted);margin-top:4px; }
+
+    /* INTENT PREVIEW */
+    .preview {
+      margin-top:12px;padding:10px 14px;border-radius:8px;
+      background:rgba(15,23,42,.9);border:1px solid var(--border-subtle);
+      font-size:12.5px;color:var(--text-muted);
+      display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+      font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
+    }
+    .preview .lbl { font-size:10px;letter-spacing:.1em;text-transform:uppercase; }
+    .preview .v { color:var(--accent); }
+    .preview .sep { color:#374151; }
+
+    /* BUTTONS */
+    .nav { display:flex;align-items:center;justify-content:space-between;margin-top:4px; }
+    button { border:none;border-radius:999px;padding:7px 18px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-main);font-weight:500;transition:transform .08s,box-shadow .08s,opacity .08s; }
+    .btn-p { background:linear-gradient(135deg,var(--accent),var(--accent-strong));color:#0b1120;box-shadow:0 10px 25px rgba(56,189,248,.35); }
+    .btn-p:hover { transform:translateY(-1px);box-shadow:0 14px 28px rgba(56,189,248,.5); }
+    .btn-p:active { transform:translateY(0); }
+    .btn-p:disabled { opacity:.4;cursor:default;box-shadow:none;transform:none; }
+    .btn-g { background:transparent;border:1px solid var(--border-subtle);color:var(--text-muted); }
+    .btn-g:hover { border-color:var(--text-muted);color:var(--text-main); }
+    .btn-ok { background:linear-gradient(135deg,var(--success),#16a34a);color:#fff;box-shadow:0 10px 25px rgba(34,197,94,.3); }
+    .btn-ok:hover { transform:translateY(-1px);box-shadow:0 14px 28px rgba(34,197,94,.4); }
+
+    /* RESULT */
+    .res {
+      background:var(--bg-deep);border-radius:8px;border:1px solid var(--border-subtle);
+      padding:12px 14px;font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
+      font-size:12px;color:var(--text-muted);white-space:pre-wrap;line-height:1.65;overflow-x:auto;
+    }
+    .meta-tbl { width:100%;border-collapse:collapse;font-size:12px; }
+    .meta-tbl td { padding:7px 10px;border-bottom:1px solid var(--border-subtle);vertical-align:top; }
+    .meta-tbl td:first-child { color:var(--text-muted);white-space:nowrap;width:150px;font-size:11px; }
+    .meta-tbl tr:last-child td { border-bottom:none; }
+    .pill { display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);color:var(--accent);font-size:10.5px;margin:2px 2px 0 0; }
+    .pill-g { background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.2);color:var(--success); }
+
+    /* TABS */
+    .tabs { display:flex;gap:3px;margin-bottom:10px; }
+    .tab { padding:5px 14px;border-radius:999px;border:1px solid var(--border-subtle);background:transparent;color:var(--text-muted);font-size:11px;cursor:pointer;transition:all .12s;font-family:var(--font-main); }
+    .tab:hover { color:var(--text-main);border-color:#4b5563; }
+    .tab.on { background:rgba(56,189,248,.1);border-color:var(--accent);color:var(--accent); }
+    .tp { display:none; }
+    .tp.on { display:block; }
+    .row-btw { display:flex;align-items:center;justify-content:space-between;margin-bottom:7px; }
+    .sm-lbl { font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted); }
+    .cp-btn { padding:3px 10px;border-radius:999px;border:1px solid var(--border-subtle);background:transparent;color:var(--text-muted);font-size:10px;cursor:pointer;font-family:var(--font-main);transition:all .12s; }
+    .cp-btn:hover { border-color:var(--accent);color:var(--accent); }
+    .cp-btn.ok { border-color:var(--success);color:var(--success); }
+
+    .fade { animation:fi .25s ease; }
+    @keyframes fi { from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)} }
+    @media(max-width:580px){ .cgrid{grid-template-columns:1fr 1fr;} .step-label{display:none;} }
+
+    /* AUTHOR CARD */
+    .author-card {
+      display:flex;align-items:center;gap:14px;
+      margin-top:14px;padding:12px 16px;
+      background:rgba(15,23,42,.9);border:1px solid var(--border-subtle);
+      border-radius:var(--radius);max-width:480px;
+    }
+    .author-photo {
+      width:44px;height:44px;border-radius:50%;
+      border:2px solid var(--accent);
+      object-fit:cover;flex-shrink:0;
+      background:var(--bg-deep);
+    }
+    .author-photo-placeholder {
+      width:44px;height:44px;border-radius:50%;
+      border:2px solid var(--accent);
+      background:rgba(56,189,248,.12);
+      display:flex;align-items:center;justify-content:center;
+      font-size:18px;flex-shrink:0;color:var(--accent);
+    }
+    .author-info { display:flex;flex-direction:column;gap:2px; }
+    .author-name { font-size:13px;font-weight:600;color:var(--text-main); }
+    .author-role { font-size:11px;color:var(--text-muted);line-height:1.4; }
+    .author-links { display:flex;gap:10px;margin-top:3px; }
+    .author-links a {
+      font-size:10px;color:var(--accent);text-decoration:none;
+      letter-spacing:.04em;opacity:.85;
+    }
+    .author-links a:hover { opacity:1;text-decoration:underline; }
+
+    /* EXPORT PANEL */
+    .export-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px; }
+    @media(max-width:500px){ .export-grid{grid-template-columns:1fr;} }
+    .export-card {
+      padding:14px 16px;border-radius:var(--radius);border:1px solid var(--border-subtle);
+      background:var(--bg-deep);cursor:pointer;transition:all .12s;text-align:left;width:100%;
+      font-family:var(--font-main);
+    }
+    .export-card:hover { border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.04);transform:translateY(-1px); }
+    .export-card:active { transform:translateY(0); }
+    .export-card-icon { font-size:22px;margin-bottom:6px; }
+    .export-card-name { font-size:13px;font-weight:600;color:var(--text-main);margin-bottom:3px; }
+    .export-card-desc { font-size:11px;color:var(--text-muted);line-height:1.4; }
+    .export-card.green  { border-color:rgba(34,197,94,.25);  }
+    .export-card.green:hover  { border-color:var(--success);  background:rgba(34,197,94,.06);  }
+    .export-card.yellow { border-color:rgba(250,204,21,.25); }
+    .export-card.yellow:hover { border-color:#facc15; background:rgba(250,204,21,.05); }
+    .export-card.blue   { border-color:rgba(56,189,248,.25); }
+    .export-card.blue:hover   { border-color:var(--accent);  background:rgba(56,189,248,.06); }
+    .export-card.purple { border-color:rgba(167,139,250,.25);}
+    .export-card.purple:hover { border-color:#a78bfa; background:rgba(167,139,250,.06); }
+
+    .merge-zone {
+      border:2px dashed var(--border-subtle);border-radius:var(--radius);
+      padding:16px;text-align:center;cursor:pointer;
+      transition:border-color .15s,background .15s;
+      background:var(--bg-deep);margin-top:4px;
+    }
+    .merge-zone:hover { border-color:var(--accent);background:rgba(56,189,248,.04); }
+    .merge-zone.dragging { border-color:var(--accent);background:rgba(56,189,248,.08); }
+    .merge-zone p { font-size:12px;color:var(--text-muted);margin:0; }
+    .merge-zone .mz-icon { font-size:24px;margin-bottom:6px; }
+    .merge-status {
+      margin-top:8px;padding:8px 12px;border-radius:6px;
+      font-size:12px;display:none;
+    }
+    .merge-status.ok  { background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.2); color:var(--success); display:block; }
+    .merge-status.err { background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:#f87171; display:block; }
+
+    /* FOOTER */
+    /* FOOTER */
+    .footer {
+      margin-top:28px;padding-top:16px;border-top:1px solid var(--border-subtle);
+      font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+    }
+    .footer a { color:var(--text-muted);text-decoration:none; }
+    .footer a:hover { color:var(--accent); }
+
+    /* CUSTOM DOMAIN MODAL */
+    .modal-overlay {
+      display:none;position:fixed;inset:0;background:rgba(2,6,23,.85);
+      z-index:100;align-items:center;justify-content:center;
+    }
+    .modal-overlay.open { display:flex; }
+    .modal {
+      background:var(--bg-elevated);border:1px solid var(--border-subtle);
+      border-radius:14px;padding:24px;width:100%;max-width:440px;
+      box-shadow:0 24px 60px rgba(0,0,0,.6);
+      animation:fi .2s ease;
+    }
+    .modal h3 { font-size:15px;margin-bottom:4px; }
+    .modal p { font-size:12px;color:var(--text-muted);margin-bottom:16px; }
+    .modal label { font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;letter-spacing:.06em; }
+    .modal input { width:100%;margin-bottom:12px; }
+    .modal-btns { display:flex;gap:8px;justify-content:flex-end;margin-top:4px; }
+  </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="shell">
+
+<header>
+  <div class="badge"><span class="badge-dot"></span>DEIP · Domain Enterprise Integration Pattern · v2.0</div>
+  <h1>DEIP Metadata Wizard</h1>
+  <p class="subtitle">Build a complete integration metadata entry — from domain intent to platform binding.</p>
+
+  <div class="author-card">
+    <img class="author-photo"
+         src="https://github.com/rhviana.png"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+         alt="Ricardo Luz Holanda Viana">
+    <div class="author-photo-placeholder" style="display:none">R</div>
+    <div class="author-info">
+      <span class="author-name">Ricardo Luz Holanda Viana</span>
+      <span class="author-role">Enterprise Integration Architect · DDCR™ Inventor · SAP BTP Expert</span>
+      <div class="author-links">
+        <a href="https://github.com/rhviana/deip" target="_blank">GitHub</a>
+        <a href="https://orcid.org/0009-0009-9549-5862" target="_blank">ORCID</a>
+        <a href="https://doi.org/10.5281/zenodo.19004802" target="_blank">DOI · DEIP v2.0</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- CUSTOM DOMAIN MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>Add Custom Domain</h3>
+    <p>Define a new domain not in the default list. It will be available immediately in this session.</p>
+    <label>Domain ID (lowercase, no spaces)</label>
+    <input type="text" id="mDomainId" placeholder="e.g. manufacturing" autocomplete="off">
+    <label>Display Label</label>
+    <input type="text" id="mDomainLabel" placeholder="e.g. Manufacturing" autocomplete="off">
+    <label>Icon (emoji)</label>
+    <input type="text" id="mDomainIcon" placeholder="e.g. 🏭" autocomplete="off" style="width:80px">
+    <label style="margin-top:8px">Entities (comma-separated)</label>
+    <input type="text" id="mDomainEnts" placeholder="e.g. products,machines,quality,shifts" autocomplete="off">
+    <div class="modal-btns">
+      <button class="btn-g" onclick="closeModal()">Cancel</button>
+      <button class="btn-p" onclick="addCustomDomain()">Add Domain</button>
+    </div>
+  </div>
+</div>
+
+<div class="prog"><div class="prog-fill" id="pf" style="width:14%"></div></div>
+<div class="stepper" id="st"></div>
+<div class="panel fade" id="sp"></div>
+<div class="nav">
+  <button class="btn-g" id="bk" onclick="back()">← Back</button>
+  <button class="btn-p" id="nx" onclick="next()">Continue →</button>
+</div>
+
+<footer class="footer">
+  <span>© 2026 Ricardo Luz Holanda Viana · DEIP v2.0 · CC BY 4.0</span>
+  <span>·</span>
+  <a href="https://github.com/rhviana/deip" target="_blank">github.com/rhviana/deip</a>
+  <span>·</span>
+  <a href="https://doi.org/10.5281/zenodo.19004802" target="_blank">DOI 10.5281/zenodo.19004802</a>
+  <span>·</span>
+  <span>USPTO GDCR™ 99680660 · DDCR™ 99691792 · ODCP™ 99704128</span>
+</footer>
+</div>
+<script>
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  DOMAINS — add or edit freely                                   ║
+// ║  Each domain: { cat, label, icon, ents[], subs[] }              ║
+// ║  cat: 'business' | 'product' | 'service' | 'iot' | 'ai_llm'    ║
+// ║  subs: [{id:'o2c', l:'O2C · Order-to-Cash'}]                   ║
+// ╚══════════════════════════════════════════════════════════════════╝
+const DOMAIN_CATS = {
+  business:{ label:'Business',  icon:'🏢' },
+  product: { label:'Product',   icon:'📦' },
+  service: { label:'Service',   icon:'🎧' },
+  iot:     { label:'IoT',       icon:'📡' },
+  ai_llm:  { label:'AI / LLM',  icon:'🤖' },
+};
+
+const DOMAINS = {
+  // ── BUSINESS ──────────────────────────────────────────────────────
+  'sales':          { cat:'business', label:'Sales',            icon:'💼', ents:['orders','quotes','contracts','customers','invoices','opportunities','leads','discounts'],        subs:[{id:'o2c',l:'O2C · Order-to-Cash'},{id:'cpq',l:'CPQ · Configure-Price-Quote'},{id:'d2c',l:'D2C · Direct-to-Consumer'},{id:'b2b',l:'B2B · Business-to-Business'}] },
+  'finance':        { cat:'business', label:'Finance',          icon:'💰', ents:['invoices','journals','payments','budgets','expenses','reports','reconciliations'],              subs:[{id:'r2r',l:'R2R · Record-to-Report'},{id:'a2p',l:'A2P · Approve-to-Pay'},{id:'c2c',l:'C2C · Cash-to-Collect'},{id:'p2c',l:'P2C · Period-to-Close'}] },
+  'procurement':    { cat:'business', label:'Procurement',      icon:'🛒', ents:['requisitions','purchase-orders','vendors','contracts','approvals','rfqs','invoices'],            subs:[{id:'p2p',l:'P2P · Procure-to-Pay'},{id:'s2c',l:'S2C · Source-to-Contract'},{id:'i2p',l:'I2P · Invoice-to-Pay'}] },
+  'hr':             { cat:'business', label:'Human Resources',  icon:'👥', ents:['employees','payroll','benefits','timesheets','onboarding','offboarding','performance'],         subs:[{id:'h2r',l:'H2R · Hire-to-Retire'},{id:'l2d',l:'L2D · Learn-to-Develop'},{id:'o2o',l:'O2O · Onboard-to-Offboard'}] },
+  'logistics':      { cat:'business', label:'Logistics',        icon:'🚚', ents:['shipments','inventory','warehouses','routes','deliveries','returns','carriers'],                subs:[{id:'p2d',l:'P2D · Pick-to-Deliver'},{id:'r2r',l:'R2R · Return-to-Refund'},{id:'l2s',l:'L2S · Load-to-Ship'}] },
+  'legal':          { cat:'business', label:'Legal',            icon:'⚖️', ents:['contracts','disputes','compliance','regulations','filings','licenses','litigation'],            subs:[{id:'c2c',l:'C2C · Contract-to-Close'},{id:'r2c',l:'R2C · Risk-to-Compliance'}] },
+  'marketing':      { cat:'business', label:'Marketing',        icon:'📣', ents:['campaigns','leads','segments','assets','analytics','channels','content'],                       subs:[{id:'l2r',l:'L2R · Lead-to-Revenue'},{id:'c2c',l:'C2C · Click-to-Convert'}] },
+  'customer-svc':   { cat:'business', label:'Customer Service', icon:'🎧', ents:['tickets','cases','knowledge','sla','escalations','surveys','channels'],                         subs:[{id:'c2r',l:'C2R · Case-to-Resolution'},{id:'i2s',l:'I2S · Inquiry-to-Solution'}] },
+  'treasury':       { cat:'business', label:'Treasury',         icon:'🏦', ents:['cash-positions','hedging','fx-rates','bank-accounts','liquidity','forecasts'],                  subs:[{id:'c2f',l:'C2F · Cash-to-Forecast'},{id:'r2p',l:'R2P · Risk-to-Payment'}] },
+  'tax':            { cat:'business', label:'Tax',              icon:'🧾', ents:['declarations','filings','withholdings','credits','audits','transfers','rates'],                 subs:[{id:'d2f',l:'D2F · Declare-to-File'},{id:'c2c',l:'C2C · Calculate-to-Comply'}] },
+  'accounting':     { cat:'business', label:'Accounting',       icon:'📒', ents:['journals','ledgers','reconciliations','close','accruals','depreciation','cost-centers'],       subs:[{id:'r2r',l:'R2R · Record-to-Report'},{id:'c2c',l:'C2C · Close-to-Consolidate'}] },
+  'audit':          { cat:'business', label:'Audit',            icon:'🔍', ents:['findings','controls','evidence','remediation','reports','frameworks','risks'],                  subs:[{id:'p2r',l:'P2R · Plan-to-Report'},{id:'f2c',l:'F2C · Finding-to-Closure'}] },
+  // ── PRODUCT ───────────────────────────────────────────────────────
+  'product-mgmt':   { cat:'product',  label:'Product Mgmt',     icon:'🗂️', ents:['roadmaps','features','epics','releases','backlog','feedback','experiments'],                    subs:[{id:'d2r',l:'D2R · Discovery-to-Release'},{id:'i2l',l:'I2L · Idea-to-Launch'}] },
+  'inventory':      { cat:'product',  label:'Inventory',        icon:'📦', ents:['stock','sku','locations','batches','movements','counts','replenishments'],                      subs:[{id:'r2s',l:'R2S · Receive-to-Stock'},{id:'d2r',l:'D2R · Demand-to-Replenish'}] },
+  'catalog':        { cat:'product',  label:'Catalog',          icon:'📋', ents:['items','categories','pricing','attributes','media','variants','bundles'],                      subs:[{id:'c2p',l:'C2P · Create-to-Publish'},{id:'p2s',l:'P2S · Product-to-Shelf'}] },
+  'manufacturing':  { cat:'product',  label:'Manufacturing',    icon:'🏭', ents:['production-orders','bom','work-centers','routings','batches','quality','capacity'],             subs:[{id:'p2p',l:'P2P · Plan-to-Produce'},{id:'b2p',l:'B2P · Build-to-Pack'},{id:'q2r',l:'Q2R · Quality-to-Release'}] },
+  'quality':        { cat:'product',  label:'Quality',          icon:'✅', ents:['inspections','defects','ncrs','rca','corrective-actions','audits','certifications'],            subs:[{id:'d2c',l:'D2C · Detect-to-Correct'},{id:'i2r',l:'I2R · Inspect-to-Release'}] },
+  'engineering':    { cat:'product',  label:'Engineering',      icon:'🔧', ents:['designs','bom','change-orders','specs','drawings','simulations','versions'],                    subs:[{id:'d2r',l:'D2R · Design-to-Release'},{id:'c2i',l:'C2I · Change-to-Implement'}] },
+  'supply-chain':   { cat:'product',  label:'Supply Chain',     icon:'🔗', ents:['plans','forecasts','suppliers','purchase-orders','receipts','transfers','analytics'],           subs:[{id:'p2f',l:'P2F · Plan-to-Fulfill'},{id:'s2d',l:'S2D · Source-to-Deliver'}] },
+  'pricing':        { cat:'product',  label:'Pricing',          icon:'💲', ents:['rules','discounts','tiers','promotions','contracts','margins','approvals'],                     subs:[{id:'c2p',l:'C2P · Configure-to-Price'},{id:'q2o',l:'Q2O · Quote-to-Order'}] },
+  'assets':         { cat:'product',  label:'Asset Mgmt',       icon:'⚙️', ents:['equipment','maintenance','work-orders','spare-parts','inspections','lifecycles'],              subs:[{id:'a2m',l:'A2M · Acquire-to-Maintain'},{id:'f2r',l:'F2R · Fail-to-Recover'}] },
+  'warranty':       { cat:'product',  label:'Warranty',         icon:'🛡️', ents:['claims','entitlements','replacements','repairs','parts','registrations'],                      subs:[{id:'c2r',l:'C2R · Claim-to-Resolution'},{id:'r2r',l:'R2R · Register-to-Renew'}] },
+  'packaging':      { cat:'product',  label:'Packaging',        icon:'🎁', ents:['materials','specs','labels','compliance','designs','orders','waste'],                           subs:[{id:'d2p',l:'D2P · Design-to-Produce'}] },
+  // ── SERVICE ───────────────────────────────────────────────────────
+  'it-service':     { cat:'service',  label:'IT Service',       icon:'💻', ents:['incidents','changes','problems','requests','assets','knowledge','slas'],                        subs:[{id:'i2r',l:'I2R · Incident-to-Resolution'},{id:'c2i',l:'C2I · Change-to-Implementation'},{id:'p2r',l:'P2R · Problem-to-Root-Cause'}] },
+  'field-service':  { cat:'service',  label:'Field Service',    icon:'🔨', ents:['dispatches','work-orders','technicians','parts','checklists','debrief','invoices'],              subs:[{id:'d2c',l:'D2C · Dispatch-to-Complete'},{id:'w2i',l:'W2I · Work-to-Invoice'}] },
+  'contract-mgmt':  { cat:'service',  label:'Contract Mgmt',    icon:'📝', ents:['contracts','amendments','renewals','milestones','slas','obligations','disputes'],               subs:[{id:'d2e',l:'D2E · Draft-to-Execute'},{id:'r2r',l:'R2R · Renew-to-Run'}] },
+  'billing':        { cat:'service',  label:'Billing',          icon:'🧾', ents:['invoices','subscriptions','usage','payments','dunning','credits','refunds'],                    subs:[{id:'u2i',l:'U2I · Usage-to-Invoice'},{id:'i2p',l:'I2P · Invoice-to-Payment'}] },
+  'support':        { cat:'service',  label:'Support',          icon:'🆘', ents:['tickets','knowledge','chat','email','escalations','feedback','slas'],                           subs:[{id:'t2r',l:'T2R · Ticket-to-Resolution'},{id:'e2s',l:'E2S · Escalate-to-Solve'}] },
+  'professional-svc':{ cat:'service', label:'Professional Svc', icon:'👔', ents:['projects','sows','deliverables','timesheets','expenses','milestones','invoices'],               subs:[{id:'s2d',l:'S2D · Scope-to-Deliver'},{id:'p2i',l:'P2I · Project-to-Invoice'}] },
+  'subscription':   { cat:'service',  label:'Subscription',     icon:'🔄', ents:['plans','entitlements','renewals','upgrades','cancellations','trials','billing'],                subs:[{id:'t2s',l:'T2S · Trial-to-Subscribe'},{id:'r2r',l:'R2R · Renew-to-Retain'}] },
+  'helpdesk':       { cat:'service',  label:'Helpdesk',         icon:'🖥️', ents:['requests','queues','agents','knowledge','chat','automation','reports'],                         subs:[{id:'r2r',l:'R2R · Request-to-Resolve'}] },
+  'onboarding-svc': { cat:'service',  label:'Onboarding',       icon:'🚀', ents:['accounts','setups','configurations','training','checklists','integrations'],                    subs:[{id:'s2l',l:'S2L · Sign-to-Live'},{id:'a2a',l:'A2A · Activate-to-Adopt'}] },
+  'maintenance-svc':{ cat:'service',  label:'Maintenance',      icon:'🔩', ents:['schedules','work-orders','assets-svc','parts','technicians','history','costs'],                 subs:[{id:'p2c',l:'P2C · Plan-to-Complete'},{id:'r2r',l:'R2R · Request-to-Repair'}] },
+  // ── IOT ───────────────────────────────────────────────────────────
+  'fleet':          { cat:'iot',      label:'Fleet',            icon:'🚗', ents:['vehicles','telemetry','drivers','routes','geofences','alerts','commands'],                      subs:[{id:'t2a',l:'T2A · Telemetry-to-Action'},{id:'m2a',l:'M2A · Monitor-to-Alert'},{id:'c2c',l:'C2C · Command-to-Confirm'}] },
+  'smart-building': { cat:'iot',      label:'Smart Building',   icon:'🏢', ents:['hvac','lighting','access','energy','occupancy','sensors','alerts'],                             subs:[{id:'s2a',l:'S2A · Sense-to-Act'},{id:'m2a',l:'M2A · Monitor-to-Alert'}] },
+  'industrial-iot': { cat:'iot',      label:'Industrial IoT',   icon:'🏭', ents:['machines','plcs','robots','conveyors','sensors','alarms','maintenance-iot'],                    subs:[{id:'s2a',l:'S2A · Sense-to-Act'},{id:'f2r',l:'F2R · Fail-to-Recover'},{id:'p2p',l:'P2P · Predict-to-Prevent'}] },
+  'energy-iot':     { cat:'iot',      label:'Energy',           icon:'⚡', ents:['meters','consumption','grid','solar','storage','forecasts','events'],                           subs:[{id:'m2o',l:'M2O · Meter-to-Optimize'},{id:'d2r',l:'D2R · Detect-to-React'}] },
+  'agriculture-iot':{ cat:'iot',      label:'Agriculture',      icon:'🌱', ents:['soil','irrigation','drones','crops','weather','livestock','yield'],                             subs:[{id:'s2h',l:'S2H · Sense-to-Harvest'},{id:'m2i',l:'M2I · Monitor-to-Irrigate'}] },
+  'healthcare-iot': { cat:'iot',      label:'Healthcare IoT',   icon:'🏥', ents:['devices','vitals','alarms','patients','beds','medications','wearables'],                        subs:[{id:'v2a',l:'V2A · Vital-to-Alert'},{id:'m2c',l:'M2C · Monitor-to-Care'}] },
+  'retail-iot':     { cat:'iot',      label:'Retail IoT',       icon:'🛍️', ents:['cameras','shelves','pos','beacons','inventory-iot','people-counting','price-tags'],             subs:[{id:'s2s',l:'S2S · Sense-to-Stock'},{id:'b2e',l:'B2E · Browse-to-Engage'}] },
+  'logistics-iot':  { cat:'iot',      label:'Logistics IoT',    icon:'📦', ents:['containers','tracking','cold-chain','seals','gps','events','customs'],                          subs:[{id:'t2d',l:'T2D · Track-to-Deliver'},{id:'c2c',l:'C2C · Condition-to-Comply'}] },
+  'environmental':  { cat:'iot',      label:'Environmental',    icon:'🌍', ents:['air-quality','water','noise','temperature','weather','emissions','alerts'],                     subs:[{id:'s2r',l:'S2R · Sense-to-Report'},{id:'d2a',l:'D2A · Detect-to-Alert'}] },
+  'smart-city':     { cat:'iot',      label:'Smart City',       icon:'🏙️', ents:['traffic','waste','lighting','parking','emergency','water','public-transit'],                   subs:[{id:'s2a',l:'S2A · Sense-to-Act'},{id:'m2o',l:'M2O · Monitor-to-Optimize'}] },
+  // ── AI / LLM ─────────────────────────────────────────────────────
+  'llm-inference':  { cat:'ai_llm',   label:'LLM Inference',    icon:'🧠', ents:['models','completions','chat','embeddings','vision','audio','batch-jobs'],                       subs:[{id:'p2i',l:'P2I · Prompt-to-Infer'},{id:'i2r',l:'I2R · Intent-to-Route'}] },
+  'agent-orch':     { cat:'ai_llm',   label:'Agent Orchestration',icon:'🤖',ents:['agents','tools','memory','plans','tasks','callbacks','traces'],                                 subs:[{id:'i2a',l:'I2A · Intent-to-Action'},{id:'t2r',l:'T2R · Task-to-Result'}] },
+  'rag':            { cat:'ai_llm',   label:'RAG',               icon:'📚', ents:['documents','embeddings','retrieval','chunks','indexes','pipelines','evaluations'],              subs:[{id:'i2a',l:'I2A · Ingest-to-Answer'},{id:'q2r',l:'Q2R · Query-to-Retrieve'}] },
+  'fine-tuning':    { cat:'ai_llm',   label:'Fine-Tuning',       icon:'🎯', ents:['datasets','jobs','checkpoints','evaluations','deployments','configs','metrics'],                subs:[{id:'d2m',l:'D2M · Data-to-Model'},{id:'t2d',l:'T2D · Train-to-Deploy'}] },
+  'ai-gateway':     { cat:'ai_llm',   label:'AI Gateway',        icon:'🚪', ents:['routes','policies','rate-limits','models','keys','logs','costs'],                               subs:[{id:'r2r',l:'R2R · Route-to-Response'},{id:'p2g',l:'P2G · Prompt-to-Govern'}] },
+  'content-gen':    { cat:'ai_llm',   label:'Content Generation',icon:'✍️', ents:['text','images','audio','video','templates','styles','approvals'],                               subs:[{id:'b2p',l:'B2P · Brief-to-Publish'},{id:'p2c',l:'P2C · Prompt-to-Content'}] },
+  'code-gen':       { cat:'ai_llm',   label:'Code Generation',   icon:'💻', ents:['completions','reviews','tests','refactors','docs','prs','scans'],                               subs:[{id:'p2c',l:'P2C · Prompt-to-Code'},{id:'r2m',l:'R2M · Review-to-Merge'}] },
+  'ai-analytics':   { cat:'ai_llm',   label:'AI Analytics',      icon:'📊', ents:['insights','predictions','anomalies','forecasts','dashboards','models','pipelines'],             subs:[{id:'d2i',l:'D2I · Data-to-Insight'},{id:'p2a',l:'P2A · Predict-to-Act'}] },
+  'ai-monitoring':  { cat:'ai_llm',   label:'AI Monitoring',     icon:'👁️', ents:['drift','accuracy','hallucinations','latency','costs','alerts','evaluations'],                   subs:[{id:'d2a',l:'D2A · Detect-to-Alert'},{id:'m2r',l:'M2R · Monitor-to-Retrain'}] },
+  'ai-search':      { cat:'ai_llm',   label:'AI Search',         icon:'🔍', ents:['queries','indexes','rankings','filters','embeddings','feedback','suggestions'],                 subs:[{id:'q2r',l:'Q2R · Query-to-Result'},{id:'s2r',l:'S2R · Search-to-Recommend'}] },
+};
+const ACTIONS=[{id:'create',code:'c',l:'create'},{id:'read',code:'r',l:'read'},{id:'update',code:'u',l:'update'},{id:'delete',code:'d',l:'delete'},{id:'query',code:'q',l:'query'},{id:'sync',code:'s',l:'sync'},{id:'transfer',code:'t',l:'transfer'},{id:'approve',code:'a',l:'approve'},{id:'notify',code:'n',l:'notify'},{id:'export',code:'e',l:'export'},{id:'monitor',code:'m',l:'monitor'},{id:'infer',code:'i',l:'infer'},{id:'detect',code:'dt',l:'detect'},{id:'provision',code:'p',l:'provision'},{id:'replicate',code:'rp',l:'replicate'}];
+const ITYPES=[{id:'request',icon:'⟷',l:'Request',d:'Synchronous call-response'},{id:'command',icon:'→',l:'Command',d:'One-way instruction'},{id:'event',icon:'◎',l:'Event',d:'State change notification'},{id:'stream',icon:'≋',l:'Stream',d:'Continuous data flow'},{id:'batch',icon:'⊞',l:'Batch',d:'Bulk scheduled processing'},{id:'workflow',icon:'⬡',l:'Workflow',d:'Long-running process'},{id:'replication',icon:'⟳',l:'Replication',d:'Data sync / CDC'},{id:'pubsub',icon:'⊕',l:'Pub/Sub',d:'Fan-out messaging'},{id:'query',icon:'⌕',l:'Query',d:'Data retrieval / search'},{id:'notification',icon:'◬',l:'Notification',d:'Push alert / webhook'},{id:'cdc',icon:'⌬',l:'CDC',d:'Change data capture'}];
+const QPS=['low-latency','high-throughput','at-least-once','exactly-once','ordered','durable','strong-auth','full-audit','eventual-consistency','near-real-time','zero-trust','data-sovereignty','retry-policy','idempotent','read-only','consistent-snapshot','loss-tolerant','tenant-isolation','backpressure','async-ack'];
+const CAPHINTS={request:['API mediation'],command:['API mediation','Middleware Layer'],event:['Event streaming','Durable queue with DLQ'],stream:['Event streaming'],batch:['ETL pipeline'],workflow:['Long-running workflow'],replication:['CDC replication'],cdc:['CDC replication'],pubsub:['Pub/Sub broker','Event streaming'],query:['API mediation'],notification:['Durable queue with DLQ','Pub/Sub broker']};
+const CAPS=[{id:'api-med',icon:'🌐',l:'API mediation',d:'Gateway proxy — sync REST/SOAP/gRPC facade'},{id:'mw',icon:'🔗',l:'Middleware Layer',d:'ESB / iPaaS transformation and routing'},{id:'ev-str',icon:'⚡',l:'Event streaming',d:'High-throughput append-only event channel'},{id:'dq',icon:'📥',l:'Durable queue with DLQ',d:'Reliable delivery with dead-letter queue'},{id:'cdc-r',icon:'🔄',l:'CDC replication',d:'Change data capture to analytics / replica'},{id:'etl',icon:'🗂️',l:'ETL pipeline',d:'Scheduled extract-transform-load process'},{id:'wf',icon:'🪄',l:'Long-running workflow',d:'Orchestrated multi-step business process'},{id:'iot',icon:'📡',l:'IoT ingestion',d:'Device data collection and command dispatch'},{id:'ai',icon:'🤖',l:'AI tool routing',d:'Agent-driven intent-to-capability resolution'},{id:'ps',icon:'📢',l:'Pub/Sub broker',d:'Fan-out messaging to multiple consumers'}];
+const PROTHINTS={'API mediation':['HTTP/REST','gRPC','GraphQL','SOAP','OData'],'Middleware Layer':['HTTP/REST','SOAP','OData','JMS','AMQP'],'Event streaming':['Kafka','AMQP','AsyncAPI'],'Durable queue with DLQ':['AMQP','JMS'],'CDC replication':['CDC connector','Kafka CDC'],'ETL pipeline':['ETL/ELT'],'Long-running workflow':['BPMN/Saga','HTTP/REST'],'IoT ingestion':['MQTT','CoAP','WebSocket','STOMP'],'AI tool routing':['HTTP/REST','gRPC','WebSocket'],'Pub/Sub broker':['Kafka','AMQP','MQTT']};
+const PROTOS=[{id:'http',icon:'🌐',l:'HTTP/REST',d:'JSON over HTTPS · stateless'},{id:'grpc',icon:'⚡',l:'gRPC',d:'Protobuf · binary · low-latency'},{id:'graphql',icon:'◈',l:'GraphQL',d:'Flexible query language for APIs'},{id:'soap',icon:'📄',l:'SOAP',d:'XML envelope · WS-* standards'},{id:'odata',icon:'📦',l:'OData',d:'REST-based standard for SAP/ERP'},{id:'ws',icon:'🔁',l:'WebSocket',d:'Full-duplex persistent connection'},{id:'kafka',icon:'🌊',l:'Kafka',d:'Distributed event streaming'},{id:'amqp',icon:'✉️',l:'AMQP',d:'Advanced message queuing'},{id:'jms',icon:'📬',l:'JMS',d:'Java message service'},{id:'mqtt',icon:'📡',l:'MQTT',d:'Lightweight IoT pub/sub'},{id:'coap',icon:'📟',l:'CoAP',d:'Constrained device protocol'},{id:'stomp',icon:'🚌',l:'STOMP',d:'Simple text-oriented messaging'},{id:'etl',icon:'🗂️',l:'ETL/ELT',d:'Extract-transform-load pipeline'},{id:'cdc',icon:'🔄',l:'CDC connector',d:'Debezium / Fivetran change capture'},{id:'bpmn',icon:'🪄',l:'BPMN/Saga',d:'Business process workflow notation'},{id:'async',icon:'📋',l:'AsyncAPI',d:'Async API spec for event-driven'}];
+const PLATHINTS={'HTTP/REST':['SAP API Management','Kong Gateway','Azure API Management','AWS API Gateway','MuleSoft Anypoint'],'gRPC':['Kong Gateway','AWS API Gateway','Istio'],'GraphQL':['Apollo Server','AWS AppSync'],'SOAP':['SAP Cloud Integration','MuleSoft Anypoint','IBM API Connect'],'OData':['SAP API Management','SAP Cloud Integration'],'Kafka':['Apache Kafka','Confluent Cloud','AWS MSK'],'AMQP':['RabbitMQ','Azure Service Bus','AWS Amazon MQ'],'JMS':['IBM MQ','ActiveMQ','SAP Cloud Integration'],'MQTT':['Mosquitto','HiveMQ','AWS IoT Core','Azure IoT Hub'],'ETL/ELT':['Apache NiFi','Azure Data Factory','AWS Glue','dbt'],'CDC connector':['Debezium','Fivetran','AWS DMS'],'BPMN/Saga':['SAP Cloud Integration','Camunda','Azure Logic Apps'],'WebSocket':['AWS API Gateway','Kong Gateway']};
+const PLATS=[{id:'sap-a',icon:'🔷',l:'SAP API Management',d:'SAP BTP gateway — GDCR proxy layer'},{id:'sap-c',icon:'🔷',l:'SAP Cloud Integration',d:'SAP iPaaS / CPI runtime'},{id:'kong',icon:'🦍',l:'Kong Gateway',d:'Open-source API gateway'},{id:'az-a',icon:'☁️',l:'Azure API Management',d:'Microsoft API gateway'},{id:'aws-g',icon:'🟡',l:'AWS API Gateway',d:'Serverless REST/HTTP gateway'},{id:'mule',icon:'🌐',l:'MuleSoft Anypoint',d:'Full iPaaS platform'},{id:'kafka',icon:'🌊',l:'Apache Kafka',d:'Distributed event streaming'},{id:'conf',icon:'🌊',l:'Confluent Cloud',d:'Managed Kafka + schema registry'},{id:'msk',icon:'🟡',l:'AWS MSK',d:'Managed Kafka on AWS'},{id:'rmq',icon:'🐇',l:'RabbitMQ',d:'Open-source AMQP broker'},{id:'az-sb',icon:'☁️',l:'Azure Service Bus',d:'Enterprise message broker'},{id:'aws-i',icon:'🟡',l:'AWS IoT Core',d:'Managed MQTT for IoT'},{id:'mosq',icon:'📡',l:'Mosquitto',d:'Lightweight MQTT broker'},{id:'nifi',icon:'🗂️',l:'Apache NiFi',d:'Dataflow automation / ETL'},{id:'dbzm',icon:'🔄',l:'Debezium',d:'Open-source CDC → Kafka'},{id:'cam',icon:'🪄',l:'Camunda',d:'BPMN workflow engine'},{id:'az-df',icon:'☁️',l:'Azure Data Factory',d:'ETL/ELT on Azure'},{id:'glue',icon:'🟡',l:'AWS Glue',d:'Serverless ETL / data catalog'},{id:'istio',icon:'🕸️',l:'Istio Service Mesh',d:'L7 traffic & observability'}];
+
+const SLABELS=['Intent','Interaction','Quality','Capability','Protocol','Platform','Output'];
+
+const S={step:0,category:null,domain:null,wantSub:null,subdomain:null,entity:null,action:null,target:'',idSuffix:'01',interaction:null,quality:[],capability:null,protocol:null,platforms:[]};
+
+function renderStepper(){
+  let h='';
+  SLABELS.forEach((l,i)=>{
+    const cls=i<S.step?'done':i===S.step?'active':'';
+    h+=`<div class="step-item ${cls}"><div class="step-bubble"><div class="step-num">${i+1}</div><div class="step-label">${l}</div></div></div>`;
+    if(i<SLABELS.length-1) h+=`<div class="step-line${i<S.step?' line-done':''}"></div>`;
+  });
+  document.getElementById('st').innerHTML=h;
+  document.getElementById('pf').style.width=Math.max(14,(S.step/(SLABELS.length-1))*100)+'%';
+  document.getElementById('bk').style.visibility=S.step===0?'hidden':'visible';
+  const nb=document.getElementById('nx');
+  if(S.step===SLABELS.length-1){nb.textContent='+ New Entry';nb.className='btn-ok';nb.onclick=reset;nb.disabled=false;}
+  else{nb.innerHTML='Continue →';nb.className='btn-p';nb.onclick=next;nb.disabled=!canGo();}
+}
+
+function canGo(){
+  if(S.step===0) return !!(S.category&&S.domain&&S.wantSub!==null&&(S.wantSub===false||S.subdomain)&&S.entity&&S.action&&S.target.trim());
+  if(S.step===1) return !!S.interaction;
+  if(S.step===2) return S.quality.length>0;
+  if(S.step===3) return !!S.capability;
+  if(S.step===4) return !!S.protocol;
+  if(S.step===5) return S.platforms.length>0;
+  return true;
+}
+
+function render(){
+  const p=document.getElementById('sp');
+  p.classList.remove('fade'); void p.offsetWidth; p.classList.add('fade');
+  const fns=[s0,s1,s2,s3,s4,s5,s6];
+  p.innerHTML=fns[S.step]();
+  renderStepper();
+}
+
+function previewUrl(withSub) {
+  const d   = S.domain   || '?';
+  const sub = S.subdomain && S.subdomain!=='general' ? '/'+S.subdomain : '';
+  const e   = S.entity   || '...';
+  const a   = S.action   || '...';
+  const t   = S.target   ? '/'+S.target.toLowerCase().replace(/\s+/g,'-') : '/...';
+  return withSub ? `/${d}${sub}/${e}/${a}${t}` : `/${d}/${e}/${a}${t}`;
+}
+
+// Step 0 — Intent
+function s0(){
+  const domsByCat = S.category ? Object.entries(DOMAINS).filter(([,v])=>v.cat===S.category) : [];
+  const subs = S.domain ? (DOMAINS[S.domain]?.subs || []) : [];
+  const ents = S.domain ? (DOMAINS[S.domain]?.ents || []) : [];
+
+  // Clear button helper
+  const clr = (fn,label) => `<span onclick="${fn}" style="font-size:10px;color:var(--accent);cursor:pointer;margin-left:8px;opacity:.7" title="Clear">× clear ${label}</span>`;
+
+  return `<h2>Declare Domain Intent <span class="tag">Step 1 / 7</span></h2>
+<p class="desc">Build the semantic key: <code style="color:var(--accent);font-family:monospace">domain[.subdomain].entity.action.target</code> — the permanent routing index of this integration.</p>
+<hr class="sep">
+
+<div class="grp-lbl">1 · Category ${S.category?clr("S.category=null;S.domain=null;S.subdomain=null;S.entity=null;S.action=null;render()","category"):''}</div>
+<div class="chips">
+  ${Object.entries(DOMAIN_CATS).map(([k,v])=>`<div class="chip ${S.category===k?'sel':''}" onclick="S.category='${k}';S.domain=null;S.subdomain=null;S.entity=null;S.action=null;render()">${v.icon} ${v.label}</div>`).join('')}
+</div>
+
+<div ${!S.category?'style="opacity:.3;pointer-events:none"':''}>
+  <div class="grp-lbl">2 · Domain ${S.domain?clr("S.domain=null;S.subdomain=null;S.entity=null;S.action=null;render()","domain"):''}</div>
+  <div class="chips">
+    ${domsByCat.length ? domsByCat.map(([k,v])=>`<div class="chip ${S.domain===k?'sel':''}" onclick="sd('${k}')">${v.icon} ${v.label}</div>`).join('')+'<div class="chip" onclick="openModal()" style="border-style:dashed;opacity:.7">＋ Add domain</div>' : '<span style="font-size:12px;color:var(--text-muted)">← select a category first</span>'}
+  </div>
+</div>
+
+<div ${!S.domain?'style="opacity:.3;pointer-events:none"':''}>
+  <div class="grp-lbl">3 · Sub-Domain <span style="font-size:10px;color:var(--text-muted);font-weight:400;letter-spacing:0;text-transform:none">(optional)</span></div>
+  <div class="chips" style="margin-bottom:8px">
+    <div class="chip ${S.wantSub===false?'sel':''}" onclick="S.wantSub=false;S.subdomain='general';render()">&#x2298; No &mdash; keep general</div>
+    <div class="chip ${S.wantSub===true?'sel':''}"  onclick="S.wantSub=true;S.subdomain=null;render()">&#x25CE; Yes &mdash; add business process</div>
+  </div>
+  ${S.wantSub===true ? `
+    <div class="chips" style="margin-left:4px;padding-left:10px;border-left:2px solid rgba(56,189,248,.25)">
+      ${subs.length
+        ? subs.map(s=>'<div class="chip '+(S.subdomain===s.id?'sel':'')+'" onclick="S.subdomain=\''+s.id+'\';render()">'+s.l+'</div>').join('')
+        : '<span style="font-size:12px;color:var(--text-muted)">No subdomains defined for this domain</span>'}
+    </div>
+    ${S.subdomain ? `<p style="font-size:11px;color:var(--text-muted);margin-top:6px;margin-left:14px">
+      Semantic URL: <code style="color:var(--accent)">${previewUrl(true)}</code></p>` : ''}
+  ` : S.wantSub===false ? `
+    <p style="font-size:11px;color:var(--text-muted);margin-top:2px">
+      Semantic URL: <code style="color:var(--accent)">${previewUrl(false)}</code></p>
+  ` : ''}
+</div>
+
+  <div class="grp-lbl">4 · Entity ${S.entity?clr("S.entity=null;S.action=null;render()","entity"):''}</div>
+  <div class="chips">
+    ${ents.length ? ents.map(e=>`<div class="chip ${S.entity===e?'sel':''}" onclick="se('${e}')">${e}</div>`).join('') : '<span style="font-size:12px;color:var(--text-muted)">← select domain first</span>'}
+  </div>
+</div>
+
+<div ${!S.entity?'style="opacity:.3;pointer-events:none"':''}>
+  <div class="grp-lbl">5 · Action ${S.action?clr("S.action=null;render()","action"):''}</div>
+  <div class="chips">
+    ${ACTIONS.map(a=>`<div class="chip ${S.action===a.id?'sel':''}" onclick="sa('${a.id}')">${a.l}</div>`).join('')}
+  </div>
+</div>
+
+<div ${!S.action?'style="opacity:.3;pointer-events:none"':''}>
+  <div class="grp-lbl">6 · Target / Vendor</div>
+  <div class="irow"><input type="text" id="ti" placeholder="e.g. salesforce, s4hana, sap, kafka, aws…" value="${S.target}" oninput="S.target=this.value;rb();" autocomplete="off"></div>
+  <div class="irow" style="margin-top:6px">
+    <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">ID Suffix (GDCR):</span>
+    <input type="text" id="si" placeholder="01" value="${S.idSuffix}" style="width:60px" oninput="S.idSuffix=this.value.replace(/^id/i,'')||'01';" autocomplete="off">
+    <span style="font-size:11px;color:var(--text-muted)">used in GDCR key — e.g. id01, id02</span>
+  </div>
+</div>
+
+<div class="preview">
+  <span class="lbl">Intent →</span>
+  <span class="v">${S.domain||'?'}</span>
+  ${S.subdomain&&S.subdomain!=='general' ? `<span class="sep">.</span><span class="v" style="color:#a5b4fc">${S.subdomain}</span>` : ''}
+  <span class="sep">.</span><span class="v">${S.entity||'?'}</span>
+  <span class="sep">.</span><span class="v">${S.action||'?'}</span>
+  <span class="sep">.</span><span class="v">${S.target||'?'}</span>
+  ${S.interaction ? `<span class="sep">.</span><span class="v">${S.interaction}</span>` : ''}
+</div>`;
+}
+function sd(d){S.domain=d;S.wantSub=null;S.subdomain=null;S.entity=null;S.action=null;render();}
+function se(e){S.entity=e;S.action=null;render();}
+function sa(a){S.action=a;render();}
+function rb(){const b=document.getElementById('nx');if(b)b.disabled=!canGo();}
+
+// Step 1 — Interaction
+function s1(){
+  return `<h2>Interaction Type <span class="tag">Step 2 / 7</span></h2>
+<p class="desc">Select the communication family. This constrains valid capabilities and protocols downstream.</p>
+<hr class="sep">
+<div class="cgrid">${ITYPES.map(t=>`<div class="cc ${S.interaction===t.id?'sel':''}" onclick="pick('interaction','${t.id}')"><div class="cc-icon">${t.icon}</div><div class="cc-name">${t.l}</div><div class="cc-desc">${t.d}</div></div>`).join('')}</div>`;
+}
+
+// Step 2 — Quality
+function s2(){
+  return `<h2>Quality Profile <span class="tag">Step 3 / 7</span></h2>
+<p class="desc">Select all non-functional requirements that apply. These drive protocol and platform selection.</p>
+<hr class="sep">
+<div class="chips">${QPS.map(q=>`<div class="chip multi ${S.quality.includes(q)?'sel':''}" onclick="togQ('${q}')">${q}</div>`).join('')}</div>`;
+}
+function togQ(q){const i=S.quality.indexOf(q);i>=0?S.quality.splice(i,1):S.quality.push(q);render();}
+
+// Step 3 — Capability
+function s3(){
+  const hints=CAPHINTS[S.interaction]||[];
+  return `<h2>Integration Capability <span class="tag">Step 4 / 7</span></h2>
+<p class="desc">Abstract architectural pattern. Suggestions are based on <span style="color:var(--accent)">${S.interaction}</span> interaction type.</p>
+<hr class="sep">
+<div class="cgrid">${CAPS.map(c=>`<div class="cc ${S.capability===c.id?'sel':''} ${hints.includes(c.l)?'hint':''}" onclick="pick('capability','${c.id}')"><div class="cc-icon">${c.icon}</div><div class="cc-name">${c.l}</div><div class="cc-desc">${c.d}</div></div>`).join('')}</div>`;
+}
+
+// Step 4 — Protocol
+function s4(){
+  const cap=CAPS.find(c=>c.id===S.capability);
+  const hints=cap?(PROTHINTS[cap.l]||[]):[];
+  return `<h2>Protocol Profile <span class="tag">Step 5 / 7</span></h2>
+<p class="desc">Concrete transport and messaging style. Suggestions based on <span style="color:var(--accent)">${cap?.l||S.capability}</span>.</p>
+<hr class="sep">
+<div class="cgrid">${PROTOS.map(p=>`<div class="cc ${S.protocol===p.id?'sel':''} ${hints.includes(p.l)?'hint':''}" onclick="pick('protocol','${p.id}')"><div class="cc-icon">${p.icon}</div><div class="cc-name">${p.l}</div><div class="cc-desc">${p.d}</div></div>`).join('')}</div>`;
+}
+
+// Step 5 — Platform
+function s5(){
+  const proto=PROTOS.find(p=>p.id===S.protocol);
+  const hints=proto?(PLATHINTS[proto.l]||[]):[];
+  return `<h2>Platform Binding <span class="tag">Step 6 / 7</span></h2>
+<p class="desc">Select one or more runtime targets (you can chain them: Gateway → iPaaS → Backend). Suggestions based on <span style="color:var(--accent)">${proto?.l||S.protocol}</span>.</p>
+<hr class="sep">
+<div class="cgrid">${PLATS.map(p=>`<div class="cc ${S.platforms.includes(p.id)?'sel':''} ${hints.includes(p.l)?'hint':''}" onclick="togP('${p.id}')"><div class="cc-icon">${p.icon}</div><div class="cc-name">${p.l}</div><div class="cc-desc">${p.d}</div></div>`).join('')}</div>
+<p style="margin-top:10px;font-size:11px;color:var(--text-muted)">Tip: select in chain order — e.g. Gateway → iPaaS → Backend system</p>`;
+}
+function togP(id){const i=S.platforms.indexOf(id);i>=0?S.platforms.splice(i,1):S.platforms.push(id);render();}
+
+// Step 6 — Output
+function s6(){
+  const ri=mkRid(), su=mkUrl(), gk=mkGdcr(), js=mkJson(), ym=mkYaml();
+  const capL=CAPS.find(c=>c.id===S.capability)?.l||S.capability;
+  const proL=PROTOS.find(p=>p.id===S.protocol)?.l||S.protocol;
+  const intL=ITYPES.find(t=>t.id===S.interaction)?.l||S.interaction;
+  return `<h2>Metadata Entry — Complete <span class="tag">Step 7 / 7</span></h2>
+<p class="desc">Your DEIP metadata entry is ready. Copy the RouteID, GDCR key, or export as JSON / YAML.</p>
+<hr class="sep">
+
+<div class="grp-lbl">Route ID</div>
+<div class="res" style="margin-bottom:14px;border-color:rgba(56,189,248,.3);background:rgba(56,189,248,.04)"><span style="color:var(--accent)">${ri}</span></div>
+
+<div class="grp-lbl">Summary</div>
+<div style="background:var(--bg-deep);border:1px solid var(--border-subtle);border-radius:8px;margin-bottom:14px">
+<table class="meta-tbl">
+<tr><td>Semantic URL</td><td style="font-family:monospace;color:var(--accent)">${su}</td></tr>
+<tr><td>Intent</td><td style="font-family:monospace;font-size:11px;color:var(--accent)">${S.domain}${S.subdomain&&S.subdomain!=='general'?'.'+S.subdomain:''}.${S.entity}.${S.action}.${S.target}</td></tr>
+<tr><td>Sub-Domain</td><td>${S.subdomain&&S.subdomain!=='general'?'<span class="pill" style="border-color:rgba(165,180,252,.3);color:#a5b4fc;background:rgba(165,180,252,.08)">'+((DOMAINS[S.domain]?.subs?.find(x=>x.id===S.subdomain)?.l)||S.subdomain)+'</span>':'<span style="color:var(--text-muted);font-size:11px">General (none)</span>'}</td></tr>
+<tr><td>Interaction Type</td><td><span class="pill">${intL}</span></td></tr>
+<tr><td>Quality Profile</td><td>${S.quality.map(q=>`<span class="pill">${q}</span>`).join('')}</td></tr>
+<tr><td>Capability</td><td><span class="pill">${capL}</span></td></tr>
+<tr><td>Protocol Profile</td><td><span class="pill">${proL}</span></td></tr>
+<tr><td>Platform Binding</td><td>${S.platforms.map(id=>`<span class="pill">${PLATS.find(p=>p.id===id)?.l||id}</span>`).join(' → ')}</td></tr>
+<tr><td>Lifecycle State</td><td><span class="pill pill-g">Proposed</span></td></tr>
+</table>
+</div>
+
+<div class="row-btw"><span class="sm-lbl">GDCR Key</span><button class="cp-btn" onclick="cp('${gk}',this)">Copy</button></div>
+<div class="res" style="margin-bottom:5px;border-color:rgba(56,189,248,.3)"><span style="color:var(--accent)">${gk}</span></div>
+<p style="font-size:11px;color:var(--text-muted);margin-bottom:14px">GDCR Key pattern: <code style="color:var(--text-muted)">gdcr&lt;entity&gt;&lt;actionCode&gt;&lt;target&gt;id&lt;suffix&gt;:&lt;adapter&gt;</code> &nbsp;·&nbsp; adapter = <code style="color:var(--text-muted)">http</code> when receiver is SAP CPI</p>
+
+<hr class="sep">
+<div class="tabs">
+  <button class="tab on" onclick="swt('json',this)">JSON</button>
+  <button class="tab" onclick="swt('yaml',this)">YAML</button>
+</div>
+<div id="pj" class="tp on">
+  <div class="row-btw"><span class="sm-lbl">Full JSON Metadata</span><button class="cp-btn" onclick="cp(${JSON.stringify(js)},this)">Copy</button></div>
+  <div class="res">${hlJ(js)}</div>
+</div>
+<div id="py" class="tp">
+  <div class="row-btw"><span class="sm-lbl">Full YAML Metadata</span><button class="cp-btn" onclick="cp(${JSON.stringify(ym)},this)">Copy</button></div>
+  <div class="res">${hlY(ym)}</div>
+
+<hr class="sep">
+<div class="grp-lbl">Export &amp; Download</div>
+<div class="export-grid">
+  <button class="export-card green" onclick="dlJson()">
+    <div class="export-card-icon">&#x1F4C4;</div>
+    <div class="export-card-name">Download JSON</div>
+    <div class="export-card-desc">Single entry &middot; machine-readable &middot; feed for DDCR / APIs</div>
+  </button>
+  <button class="export-card yellow" onclick="dlExcelNew()">
+    <div class="export-card-icon">&#x1F4CA;</div>
+    <div class="export-card-name">Export to Excel</div>
+    <div class="export-card-desc">New spreadsheet &middot; DEIP Intent Catalog format &middot; .xlsx</div>
+  </button>
+  <button class="export-card blue" onclick="dlJsonCatalog()">
+    <div class="export-card-icon">&#x1F5C2;</div>
+    <div class="export-card-name">Add to JSON Catalog</div>
+    <div class="export-card-desc">Append to existing catalog.json &mdash; or start a new one</div>
+  </button>
+  <button class="export-card purple" onclick="document.getElementById('mergeArea').scrollIntoView({behavior:'smooth'})">
+    <div class="export-card-icon">&#x1F500;</div>
+    <div class="export-card-name">Merge into Excel</div>
+    <div class="export-card-desc">Upload existing .xlsx catalog &middot; append this entry &middot; download</div>
+  </button>
+</div>
+<div id="mergeArea">
+  <div class="row-btw" style="margin-bottom:6px">
+    <span class="sm-lbl">Merge into existing Excel catalog</span>
+  </div>
+  <div class="merge-zone" id="mergeZone"
+    onclick="document.getElementById('mergeInput').click()"
+    ondragover="event.preventDefault();this.classList.add('dragging')"
+    ondragleave="this.classList.remove('dragging')"
+    ondrop="handleDrop(event)">
+    <div class="mz-icon">&#x1F4C2;</div>
+    <p>Click to upload or drag &amp; drop your existing <strong style="color:var(--text-main)">.xlsx</strong> catalog</p>
+    <p style="margin-top:4px;font-size:11px">This entry will be appended as a new row and re-downloaded</p>
+  </div>
+  <input type="file" id="mergeInput" accept=".xlsx,.xls" style="display:none" onchange="handleMergeFile(this.files[0])">
+  <div class="merge-status" id="mergeStatus"></div>
+</div></div>`;
+}
+
+function swt(n,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('pj').classList.toggle('on',n==='json');
+  document.getElementById('py').classList.toggle('on',n==='yaml');
+}
+
+// Generators
+function mkRid(){
+  const sub = S.subdomain && S.subdomain!=='general' ? '.'+S.subdomain : '';
+  return `${S.domain}${sub}.${S.entity}.${S.action}.${S.target.toLowerCase().replace(/\s+/g,'')}.${S.interaction}`;
+}
+function mkUrl(){
+  const sub = S.subdomain && S.subdomain!=='general' ? '/'+S.subdomain : '';
+  const tgt = S.target ? '/'+S.target.toLowerCase().replace(/\s+/g,'-') : '';
+  return `/${S.domain}${sub}/${S.entity}/${S.action}${tgt}`;
+}
+function mkGdcr(){
+  const code = ACTIONS.find(a=>a.id===S.action)?.code || S.action.charAt(0);
+  const ent  = (S.entity||'').replace(/-/g,'').toLowerCase();
+  const tgt  = (S.target||'').replace(/\s+/g,'').toLowerCase();
+  const sfx  = (S.idSuffix||'01').replace(/^id/i,'');
+  const pid  = S.protocol;
+
+  // Adapter: if any selected platform is SAP CPI, or target name contains 'cpi' → http
+  const platLabels = S.platforms.map(id=>PLATS.find(p=>p.id===id)?.l||'').join(' ').toLowerCase();
+  const tgtLower   = S.target.toLowerCase();
+  const isCPI      = platLabels.includes('cloud integration') || platLabels.includes('cpi')
+                  || tgtLower.includes('cpi') || tgtLower.includes('cloud integration');
+
+  let adapter = 'http';
+  if (isCPI) {
+    adapter = 'http';   // SAP CPI always receives via HTTP adapter
+  } else if (pid==='soap')                           adapter = 'cxf';
+  else if (['kafka','amqp','jms'].includes(pid))     adapter = 'amqp';
+  else if (['mqtt','coap','stomp'].includes(pid))    adapter = 'mqtt';
+  else if (['etl','cdc'].includes(pid))              adapter = 'jdbc';
+  else if (pid==='bpmn')                             adapter = 'flow';
+
+  // Prefix is gdcr (GDCR routing key standard)
+  return `gdcr${ent}${code}${tgt}id${sfx}:${adapter}`;
+}
+function mkJson(){
+  const capL=CAPS.find(c=>c.id===S.capability)?.l||S.capability;
+  const proL=PROTOS.find(p=>p.id===S.protocol)?.l||S.protocol;
+  const platC=S.platforms.map(id=>PLATS.find(p=>p.id===id)?.l||id).join(' → ');
+  const subLabel = S.subdomain&&S.subdomain!=='general' ? (DOMAINS[S.domain]?.subs?.find(x=>x.id===S.subdomain)?.l||S.subdomain) : 'General';
+  return JSON.stringify({routeId:mkRid(),lifecycleState:'Proposed',intent:`${S.domain}.${S.subdomain&&S.subdomain!=='general'?S.subdomain+'.':''}${S.entity}.${S.action}.${S.target}`,subdomain:subLabel,semanticUrl:mkUrl(),gdcrKey:mkGdcr(),interactionType:S.interaction,qualityProfile:S.quality,integrationCapability:capL,protocolProfile:proL,platformBinding:platC,securityProfile:'',observabilityProfile:'',owner:''},null,2);
+}
+function mkYaml(){
+  const capL=CAPS.find(c=>c.id===S.capability)?.l||S.capability;
+  const proL=PROTOS.find(p=>p.id===S.protocol)?.l||S.protocol;
+  const platC=S.platforms.map(id=>PLATS.find(p=>p.id===id)?.l||id).join(' → ');
+  const ySubLabel=S.subdomain&&S.subdomain!=="general"?(DOMAINS[S.domain]?.subs?.find(x=>x.id===S.subdomain)?.l||S.subdomain):"General";
+  return `routeId: "${mkRid()}"
+lifecycleState: Proposed
+intent: "${S.domain}.${S.subdomain&&S.subdomain!=="general"?S.subdomain+".":""}${S.entity}.${S.action}.${S.target}"\nsubdomain: "${ySubLabel}"\nsemanticUrl: "${mkUrl()}"
+gdcrKey: "${mkGdcr()}"
+interactionType: ${S.interaction}\nqualityProfile:\n${S.quality.map(q=>`  - ${q}`).join('\n')}\nintegrationCapability: "${capL}"\nprotocolProfile: "${proL}"\nplatformBinding: "${platC}"\nsecurityProfile: ""\nobservabilityProfile: ""\nowner: ""`;
+}
+function hlJ(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"([^"]+)":/g,'<span style="color:#93c5fd">"$1"</span>:').replace(/: "([^"]+)"/g,': <span style="color:#86efac">"$1"</span>').replace(/: (\d+)/g,': <span style="color:#fde68a">$1</span>');}
+function hlY(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/^([a-zA-Z]\w*): /gm,'<span style="color:#93c5fd">$1</span>: ').replace(/: "([^"]+)"/g,': <span style="color:#86efac">"$1"</span>').replace(/^  - (.+)$/gm,'  - <span style="color:#fde68a">$1</span>');}
+
+function pick(f,v){S[f]=v;render();}
+function next(){if(!canGo())return;if(S.step<SLABELS.length-1){S.step++;render();}}
+function back(){if(S.step>0){S.step--;render();}}
+function reset(){Object.assign(S,{step:0,category:null,domain:null,wantSub:null,subdomain:null,entity:null,action:null,target:'',idSuffix:'01',interaction:null,quality:[],capability:null,protocol:null,platforms:[]});render();}
+function cp(t,btn){navigator.clipboard.writeText(t).then(()=>{btn.textContent='Copied ✓';btn.classList.add('ok');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('ok');},1800);});}
+
+render();
+
+// ══ EXPORT HELPERS ════════════════════════════
+
+const CATALOG_KEY = 'deip_catalog';  // sessionStorage key for JSON catalog
+
+// Build the row object shared by all exporters
+function buildEntry() {
+  const capL  = CAPS.find(x=>x.id===S.capability)?.l  || S.capability  || '';
+  const proL  = PROTOS.find(x=>x.id===S.protocol)?.l  || S.protocol    || '';
+  const platC = S.platforms.map(id=>PLATS.find(p=>p.id===id)?.l||id).join(' → ');
+  const subLabel = S.subdomain && S.subdomain!=='general'
+    ? (DOMAINS[S.domain]?.subs?.find(x=>x.id===S.subdomain)?.l || S.subdomain)
+    : 'General';
+  return {
+    routeId:               mkRid(),
+    lifecycleState:        'Proposed',
+    category:              DOMAIN_CATS[S.category]?.label || S.category || '',
+    domain:                S.domain || '',
+    subdomain:             subLabel,
+    intent:                `${S.domain}.${S.subdomain&&S.subdomain!=='general'?S.subdomain+'.':''}${S.entity}.${S.action}.${S.target}`,
+    semanticUrl:           mkUrl(),
+    gdcrKey:               mkGdcr(),
+    interactionType:       S.interaction || '',
+    qualityProfile:        S.quality.join(', '),
+    integrationCapability: capL,
+    protocolProfile:       proL,
+    platformBinding:       platC,
+    securityProfile:       '',
+    observabilityProfile:  '',
+    owner:                 '',
+    createdAt:             new Date().toISOString().split('T')[0],
+  };
+}
+
+// Column headers for Excel (in order)
+const XLS_HEADERS = [
+  'routeId','lifecycleState','category','domain','subdomain','intent',
+  'semanticUrl','gdcrKey','interactionType','qualityProfile',
+  'integrationCapability','protocolProfile','platformBinding',
+  'securityProfile','observabilityProfile','owner','createdAt'
+];
+
+// ── 1. Download JSON (single entry) ──────────────────────────
+function dlJson() {
+  const entry = buildEntry();
+  // JSON with array for consistency (easy to append later)
+  const blob = new Blob([JSON.stringify([entry], null, 2)], {type:'application/json'});
+  triggerDownload(blob, `deip-entry-${entry.routeId.replace(/\./g,'-')}.json`);
+}
+
+// ── 2. Export to new Excel ────────────────────────────────────
+function dlExcelNew() {
+  if (!window.XLSX) { alert('SheetJS not loaded yet — try again in a moment.'); return; }
+  const entry = buildEntry();
+  const wb = XLSX.utils.book_new();
+  const ws = buildSheet([entry]);
+  XLSX.utils.book_append_sheet(wb, ws, 'DEIP Intent Catalog');
+  XLSX.writeFile(wb, `deip-catalog-${today()}.xlsx`);
+}
+
+// ── 3. JSON Catalog (accumulates in session, downloads all) ──
+function dlJsonCatalog() {
+  const entry = buildEntry();
+  let catalog = [];
+  try { catalog = JSON.parse(sessionStorage.getItem(CATALOG_KEY) || '[]'); } catch(e){}
+  // avoid exact duplicate routeIds
+  if (!catalog.find(x=>x.routeId === entry.routeId)) catalog.push(entry);
+  sessionStorage.setItem(CATALOG_KEY, JSON.stringify(catalog));
+  const blob = new Blob([JSON.stringify(catalog, null, 2)], {type:'application/json'});
+  triggerDownload(blob, `deip-catalog-${today()}.json`);
+  showMergeStatus(`Catalog now has ${catalog.length} entr${catalog.length===1?'y':'ies'}. Download triggered.`, 'ok');
+}
+
+// ── 4. Merge into existing Excel ─────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('mergeZone').classList.remove('dragging');
+  const file = e.dataTransfer.files[0];
+  if (file) handleMergeFile(file);
+}
+
+function handleMergeFile(file) {
+  if (!file) return;
+  if (!window.XLSX) { showMergeStatus('SheetJS not loaded — refresh and try again.', 'err'); return; }
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx','xls'].includes(ext)) { showMergeStatus('Please upload a .xlsx or .xls file.', 'err'); return; }
+
+  showMergeStatus('Reading file...', 'ok');
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb      = XLSX.read(e.target.result, {type:'array'});
+      const sheetName = wb.SheetNames[0];
+      const ws      = wb.Sheets[sheetName];
+
+      // Read existing rows
+      const existing = XLSX.utils.sheet_to_json(ws, {defval:''});
+      const entry    = buildEntry();
+
+      // Check for duplicate
+      const isDup = existing.find(r=>r.routeId === entry.routeId);
+      if (isDup) {
+        showMergeStatus(`RouteID "${entry.routeId}" already exists in row ${existing.indexOf(isDup)+2}. No duplicate added.`, 'err');
+        return;
+      }
+
+      // Append new row
+      const updated = [...existing, entry];
+      const newWs   = buildSheet(updated, true);  // true = headers from data keys
+      const newWb   = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(newWb, newWs, sheetName);
+
+      // Copy other sheets if any
+      wb.SheetNames.slice(1).forEach(n => {
+        XLSX.utils.book_append_sheet(newWb, wb.Sheets[n], n);
+      });
+
+      XLSX.writeFile(newWb, `${file.name.replace(/\.xlsx?$/i,'')}-merged-${today()}.xlsx`);
+      showMergeStatus(`Done! Added 1 entry. Catalog now has ${updated.length} entr${updated.length===1?'y':'ies'}.`, 'ok');
+    } catch(err) {
+      showMergeStatus('Error reading file: ' + err.message, 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── SHEET BUILDER ────────────────────────────────────────────
+function buildSheet(rows, inferHeaders=false) {
+  const headers = inferHeaders && rows.length
+    ? Object.keys(rows[0])
+    : XLS_HEADERS;
+
+  // Build array-of-arrays for SheetJS
+  const aoa = [headers.map(h => h)];  // header row
+  rows.forEach(r => aoa.push(headers.map(h => r[h] ?? '')));
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Column widths
+  const colWidths = {
+    routeId:55, lifecycleState:15, category:14, domain:18, subdomain:26,
+    intent:55, semanticUrl:35, gdcrKey:45, interactionType:16,
+    qualityProfile:45, integrationCapability:28, protocolProfile:16,
+    platformBinding:45, securityProfile:20, observabilityProfile:22,
+    owner:20, createdAt:12
+  };
+  ws['!cols'] = headers.map(h => ({wch: colWidths[h] || 20}));
+
+  // Freeze top row
+  ws['!freeze'] = {xSplit:0, ySplit:1};
+
+  return ws;
+}
+
+// ── UTILS ────────────────────────────────────────────────────
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href    = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function showMergeStatus(msg, type) {
+  const el = document.getElementById('mergeStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'merge-status ' + type;
+}
+
+// ══ CUSTOM DOMAIN ════════════════════════════
+// To permanently add a domain, edit the DOMAINS object at the top of the script.
+// Example — add 'manufacturing':
+//   manufacturing: { label:'Manufacturing', icon:'🏭', ents:['products','machines','quality','shifts'] }
+
+function openModal() {
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  ['mDomainId','mDomainLabel','mDomainIcon','mDomainEnts'].forEach(id=>document.getElementById(id).value='');
+}
+function addCustomDomain() {
+  const id    = document.getElementById('mDomainId').value.trim().toLowerCase().replace(/\s+/g,'-');
+  const label = document.getElementById('mDomainLabel').value.trim();
+  const icon  = document.getElementById('mDomainIcon').value.trim() || '📁';
+  const ents  = document.getElementById('mDomainEnts').value.split(',').map(s=>s.trim()).filter(Boolean);
+  if (!id || !label) { alert('Domain ID and Label are required.'); return; }
+  if (DOMAINS[id]) { alert('A domain with that ID already exists.'); return; }
+  DOMAINS[id] = { label, icon, ents: ents.length ? ents : ['entities'] };
+  closeModal();
+  render();
+}
+// Close modal on overlay click
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
