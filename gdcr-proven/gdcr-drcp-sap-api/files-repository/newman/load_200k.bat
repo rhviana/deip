@@ -4,7 +4,7 @@ cls
 
 echo.
 echo ================================================================
-echo   Testing with Microsoft Azure API Management
+echo   Testing with API Management
 echo ================================================================
 echo   DDCR - LOAD TEST 200K MESSAGES
 echo   Sales:    13 routes x 8696 = 113.048 messages
