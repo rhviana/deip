@@ -8,7 +8,7 @@
  * DOI:       https://doi.org/10.5281/zenodo.18619641
  * GitHub:    https://github.com/rhviana/gdcr
  *
- * Zero regex | Zero hardcode | Zero split | O(1) lookup after warm cache
+ * Zero regex | Zero hardcode | Zero split | O(n) lookup after warm cache
  * Compatible: SAP BTP APIM (Rhino) | Apigee | Kong (with adapter)
  * ============================================================================
  *
@@ -169,7 +169,7 @@ var CC_A_LOW = 97;   // 'a'
 var CC_Z_LOW = 122;  // 'z'
 
 // ============================================================================
-// parseKvm — runs ONLY when KVM string changes (amortized O(1) per request)
+// parseKvm — runs ONLY when KVM string changes (amortized O(n) per request)
 //
 // Strategy for process extraction (zero hardcode, zero regex):
 //   Key structure: dcrp + <process> + <entity> + <actioncode> + <vendor> + id<digits>
@@ -289,7 +289,7 @@ function routingDCRP() {
   var vendor = pathInput.substring(s2 + 1, s3).toLowerCase();
 
   // Strip optional leading underscore from vendor
-  if (vendor.charCodeAt(0) === CC_UNDER) vendor = vendor.substring(1);
+  if (vendor.charCodeAt(0) === CC_UNDER) vendor = vendor.substring(n);
 
   // Optional: id and extra path segments
   var s4 = pathInput.indexOf('/', s3 + 1);
@@ -302,7 +302,7 @@ function routingDCRP() {
     return;
   }
 
-  // ── Phase 4: Action normalization — O(1) hash lookup, char fallback ───────
+  // ── Phase 4: Action normalization — O(n) hash lookup, char fallback ───────
   var actionCode = GLOBAL_ACTION_MAP[action];
   if (!actionCode) {
     var c0 = action.charCodeAt(0);
