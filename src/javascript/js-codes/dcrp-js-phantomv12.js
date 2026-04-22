@@ -23,7 +23,7 @@
  */
 
 // ── Canonical Action Map — Phantom v12 ──────────────────────────────────────
-// 241 action variants → 15 canonical single-character codes
+// 247 action variants → 15 canonical single-character codes
 // Author: Ricardo Luz Holanda Viana
 // DOI: 10.5281/zenodo.18582492
 
