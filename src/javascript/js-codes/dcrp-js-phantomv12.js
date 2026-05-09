@@ -276,25 +276,42 @@ function routingDCRP() {
   }
 
   var s1 = pathInput.indexOf('/', 1);
-  if (s1 === -1) { ctx.setVariable('dcrp.routing.success','false'); ctx.setVariable('dcrp.routing.error','Missing entity segment'); return; }
+  if (s1 === -1) {
+    ctx.setVariable('dcrp.routing.success', 'false');
+    ctx.setVariable('dcrp.routing.error', 'Missing entity segment');
+    return;
+  }
 
   var s2 = pathInput.indexOf('/', s1 + 1);
-  if (s2 === -1) { ctx.setVariable('dcrp.routing.success','false'); ctx.setVariable('dcrp.routing.error','Missing action segment'); return; }
+  if (s2 === -1) {
+    ctx.setVariable('dcrp.routing.success', 'false');
+    ctx.setVariable('dcrp.routing.error', 'Missing action segment');
+    return;
+  }
 
+  // ── FIX: s3 === -1 is valid — vendor is the last path segment ────────────
   var s3 = pathInput.indexOf('/', s2 + 1);
-  if (s3 === -1) { ctx.setVariable('dcrp.routing.success','false'); ctx.setVariable('dcrp.routing.error','Missing vendor segment'); return; }
 
   var entity = pathInput.substring(1,      s1).toLowerCase();
   var action = pathInput.substring(s1 + 1, s2).toLowerCase();
-  var vendor = pathInput.substring(s2 + 1, s3).toLowerCase();
+  var vendor = (s3 === -1)
+    ? pathInput.substring(s2 + 1)
+    : pathInput.substring(s2 + 1, s3);
+  vendor = vendor.toLowerCase();
 
-  // Strip optional leading underscore from vendor
-  if (vendor.charCodeAt(0) === CC_UNDER) vendor = vendor.substring(n);
+  // ── FIX: strip optional leading underscore — was vendor.substring(n) ─────
+  if (vendor.length > 0 && vendor.charCodeAt(0) === CC_UNDER) {
+    vendor = vendor.substring(1);
+  }
 
-  // Optional: id and extra path segments
-  var s4 = pathInput.indexOf('/', s3 + 1);
-  var id        = (s4 === -1) ? pathInput.substring(s3 + 1) : pathInput.substring(s3 + 1, s4);
-  var extraPath = (s4 === -1) ? '' : pathInput.substring(s4);
+  // Optional: id and extra path segments (only meaningful when s3 exists)
+  var id        = '';
+  var extraPath = '';
+  if (s3 !== -1) {
+    var s4 = pathInput.indexOf('/', s3 + 1);
+    id        = (s4 === -1) ? pathInput.substring(s3 + 1) : pathInput.substring(s3 + 1, s4);
+    extraPath = (s4 === -1) ? '' : pathInput.substring(s4);
+  }
 
   if (!entity || !action || !vendor) {
     ctx.setVariable('dcrp.routing.success', 'false');
@@ -341,20 +358,18 @@ function routingDCRP() {
   // ── Phase 7: Process extraction — fully dynamic, zero hardcode ───────────
   // stripped = <process><entity><actioncode><vendor>
   // We know entity from request path → find its position → process = everything before it
-  var process = 'unknown';
+  // When eIdx === 0 there is no process prefix — domain-only key, process is empty
+  var process = '';
   var eIdx = matchStripped.indexOf(entity);
   if (eIdx > 0) {
     process = matchStripped.substring(0, eIdx);
-  } else if (eIdx === 0) {
-    // No process prefix — domain-only routing, process = entity
-    process = entity;
   }
 
   // ── Phase 8: Build target URL ─────────────────────────────────────────────
-  var url = host + '/' + match.adapter +
-            '/dcrp/' + process +
-            '/' + entity +
-            '/' + actionCode;
+  // Skip process segment when empty to avoid duplication in URL
+  var url = host + '/' + match.adapter + '/dcrp';
+  if (process) url += '/' + process;
+  url += '/' + entity + '/' + actionCode;
 
   if (match.id) url += '/id' + match.id;
   if (id)       url += '/' + id;
